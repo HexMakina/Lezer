@@ -25,11 +25,13 @@ class Lezer extends \i18n{
   public static function languages_by_file($directory)
   {
     $ret = [];
-    foreach(FileSystem::preg_scandir($directory, '/^[a-z]{3}$/') as $code)
-    {
-    	if(file_exists($directory.'/' . $code . '/user_interface.json'))
-    		$ret[$code] = $code;
-    }
+    $files = FileSystem::preg_scandir($directory, '/^[a-z]{3}$/');
+    if(!empty($files))
+      foreach($files as $code)
+      {
+      	if(file_exists($directory.'/' . $code . '/user_interface.json'))
+      		$ret[$code] = $code;
+      }
 
     return $ret;
   }
