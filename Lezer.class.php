@@ -99,6 +99,13 @@ class Lezer extends \i18n{
     return $ret;
   }
 
+  public static function time($time_string, $short=true)
+  {
+    if ($short === true)
+      $time_string = substr($time_string, 0, 5);
+    return $time_string;
+  }
+
   public static function human_date($date_string, $short=true)
   {
     if($date_string === '0000-00-00' || empty($date_string))
@@ -115,6 +122,26 @@ class Lezer extends \i18n{
       return $ret;
     else
       return "$ret $year";
+  }
+
+  public static function human_month($date_string)
+  {
+    return L('DATETIME_CALENDAR_MONTH_'.Dato::format($date_string, 'm'));
+  }
+
+  public static function human_day($date_string)
+  {
+    return L('DATETIME_CALENDAR_DAY_'.Dato::format($date_string, 'N'));
+  }
+
+  public static function human_seconds($seconds)
+  {
+    $hours = floor($seconds / 3600);
+    $mins = floor(($seconds-$hours*3600) / 60);
+    $secs = floor($seconds % 60);
+
+    $hours_format ='%dh %dm %ds';
+    return sprintf($hours_format, $hours, $mins, $secs);
   }
 }
 
