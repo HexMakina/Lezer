@@ -16,25 +16,92 @@ require_once 'Lezer/i18n.class.php';
 
 class Lezer extends \i18n{
 
-  protected $basePath = 'locale';
-  protected $filePath = 'locale/{LANGUAGE}/user_interface.ini'; // uses gettext hierarchy
-  protected $cachePath = 'locale/cache/';
-  protected $fallbackLang = 'fra';  // uses ISO-639-3
+  private $detected_language_files = [];
+  private $detected_language_env = [];
+
+  // protected $basePath = 'locale';
+  // protected $filePath = 'locale/{LANGUAGE}/user_interface.ini'; // uses gettext hierarchy
+  // protected $cachePath = 'locale/cache/';
+  // protected $fallbackLang = 'fra';  // uses ISO-639-3
   protected $currentLang = null;
 
-  public static function languages_by_file($directory)
+  public function one_language()
   {
-    $ret = [];
-    $files = FileSystem::preg_scandir($directory, '/^[a-z]{3}$/');
-    if(!empty($files))
-      foreach($files as $code)
-      {
-      	if(file_exists($directory.'/' . $code . '/user_interface.json'))
-      		$ret[$code] = $code;
+    $this->detect_language_files();
+    $this->detect_language_env();
+    $the_one_language = current(array_intersect($this->detect_language_files(), $this->detect_language_env()));
+
+    if($the_one_language)
+      $this->setForcedLang($the_one_language);
+
+    return $the_one_language;
+  }
+
+  public function detect_language_files()
+  {
+    $files = FileSystem::preg_scandir(dirname($this->filePath), '/.json$/');
+    if(empty($files))
+      return [];
+
+    $files = implode('',$files);
+    $res = preg_match_all('/([a-z]{3})\.json/', $files, $m);
+    if($res) // false or 0 is none found
+      $this->detected_language_files = $m[1];
+    return $this->detected_language_files;
+  }
+
+  /**
+   * getUserLangs()
+   * Returns the user languages
+   * Normally it returns an array like this:
+   * 1. Forced language
+   * 2. Language in $_GET['lang']
+   * 3. Language in $_SESSION['lang']
+   * 4. COOKIE
+   * 5. Fallback language
+   * Note: duplicate values are deleted.
+   *
+   * @return array with the user languages sorted by priority.
+   */
+  public function detect_language_env() {
+      $userLangs = array();
+
+      // 1. forced language
+      if ($this->forcedLang != NULL) {
+          $userLangs['forced'] = $this->forcedLang;
       }
 
-    return $ret;
+      // 2. GET parameter 'lang'
+      if (isset($_GET['lang']) && is_string($_GET['lang'])) {
+          $userLangs['get'] = $_GET['lang'];
+      }
+
+      // 3. SESSION parameter 'lang'
+      if (isset($_SESSION['lang']) && is_string($_SESSION['lang'])) {
+          $userLangs['session'] = $_SESSION['lang'];
+      }
+
+      // 4. COOKIES
+      if (isset($_COOKIE['lang']) && is_string($_COOKIE['lang'])) {
+          $userLangs['cookie'] = $_COOKIE['lang'];
+      }
+
+      // Lowest priority: fallback
+      $userLangs['fallback'] = $this->fallbackLang;
+
+      // remove duplicate elements
+      $userLangs = array_unique($userLangs);
+
+      // remove illegal userLangs
+      foreach ($userLangs as $key => $value) {
+          // only allow a-z, A-Z and 0-9 and _ and -
+          if (preg_match('/^[a-zA-Z0-9_-]*$/', $value) === 1)
+              $this->detected_language_env[$key] = $value;
+      }
+
+      return $this->detected_language_env;
   }
+
 
   public static function model_type_to_label($form_model)
   {
@@ -143,6 +210,8 @@ class Lezer extends \i18n{
     $hours_format ='%dh %dm %ds';
     return sprintf($hours_format, $hours, $mins, $secs);
   }
+
+
 }
 
 ?>
