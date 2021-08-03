@@ -9,7 +9,7 @@
 namespace HexMakina\Lezer;
 
 
-use \HexMakina\Format\File\FileSystem;
+use \HexMakina\LocalFS\FileSystem;
 use \HexMakina\Format\Tempo\{Dato,DatoTempo,Tempo};
 
 require_once 'Lezer/i18n.class.php';
