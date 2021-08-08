@@ -1,0 +1,23 @@
+{
+    "name": "hexmakina/lezer",
+    "description": "Another 18n class, called Lezer, shorthand L",
+    "type": "package",
+    "require": {
+        "php": ">=7.4",
+        "philipp15b/php-i18n": "^4.0"
+    },
+    "license": "mit",
+    "authors": [
+        {
+            "name": "HexMakina",
+            "email": "touch@hexmakina.be",
+            "homepage": "https://hexmakina.be"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "HexMakina\\Lezer\\": "/"
+        }
+    }
+}
