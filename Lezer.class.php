@@ -8,11 +8,8 @@
  */
 namespace HexMakina\Lezer;
 
-
 use \HexMakina\LocalFS\FileSystem;
 use \HexMakina\Format\Tempo\{Dato,DatoTempo,Tempo};
-
-require_once 'Lezer/i18n.class.php';
 
 class Lezer extends \i18n{
 
@@ -88,7 +85,6 @@ class Lezer extends \i18n{
 
       // Lowest priority: fallback
       $userLangs['fallback'] = $this->fallbackLang;
-
       // remove duplicate elements
       $userLangs = array_unique($userLangs);
 
