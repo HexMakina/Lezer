@@ -47,6 +47,16 @@ class Lezer extends \i18n{
     return $this->detected_language_files;
   }
 
+  public function compileFunction()
+  {
+    return ''
+    . "function ".$this->prefix .'($string, $args=NULL) {'."\n"
+    . '    if (!defined("'.$this->prefix.'::".$string))'
+    . '       return $string;'
+    . '    $return = constant("'.$this->prefix.'::".$string);'."\n"
+    . '    return $args ? vsprintf($return,$args) : $return;'
+    . "\n}";
+  }
   /**
    * getUserLangs()
    * Returns the user languages
