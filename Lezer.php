@@ -9,7 +9,7 @@
 namespace HexMakina\Lezer;
 
 use \HexMakina\LocalFS\FileSystem;
-use \HexMakina\Format\Tempo\{Dato,DatoTempo,Tempo};
+use \HexMakina\Tempus\{Dato,DatoTempo,Tempo};
 
 class Lezer extends \i18n{
 
