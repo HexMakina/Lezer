@@ -5,6 +5,7 @@
     "require": {
         "php": ">=7.4",
         "hexmakina/local-fs": "0.0.*",
+        "hexmakina/tempus": "0.0.*",
         "philipp15b/php-i18n": "^4.0"
     },
     "license": "mit",
