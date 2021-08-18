@@ -3,7 +3,7 @@
     "description": "Another 18n class, called Lezer, shorthand L",
     "type": "package",
     "require": {
-        "php": ">=7.3",
+        "php": ">=7.0",
         "hexmakina/local-fs": "0.0.*",
         "hexmakina/tempus": "0.0.*",
         "philipp15b/php-i18n": "^4.0"
