@@ -52,16 +52,6 @@ class Lezer extends \i18n
         return $this->detected_language_files;
     }
 
-    public function compileFunction()
-    {
-        return ''
-        . "function " . $this->prefix . '($string, $args=NULL) {' . "\n"
-        . '    if (!defined("' . $this->prefix . '::".$string))'
-        . '       return $string;'
-        . '    $return = constant("' . $this->prefix . '::".$string);' . "\n"
-        . '    return $args ? vsprintf($return,$args) : $return;'
-        . "\n}";
-    }
   /**
    * getUserLangs()
    * Returns the user languages
@@ -116,13 +106,29 @@ class Lezer extends \i18n
     }
 
 
+    public function compileFunction()
+    {
+        return ''
+        . "function " . $this->prefix . '($string, $args=NULL) {' . "\n"
+        . '    if (!defined("' . $this->prefix . '::".$string))'
+        . '       return $string;'
+        . '    $return = constant("' . $this->prefix . '::".$string);' . "\n"
+        . '    return $args ? vsprintf($return,$args) : $return;'
+        . "\n}";
+    }
+
+    public function l($message, $context=[]) : string
+    {
+        return call_user_func($this->prefix, $message, $context);
+    }
+
     public static function model_type_to_label($form_model)
     {
-        return L(sprintf('MODEL_%s_INSTANCE', get_class($form_model)::model_type()));
+        return $this->l(sprintf('MODEL_%s_INSTANCE', get_class($form_model)::model_type()));
     }
     public static function field_name_to_label($form_model, $field_name)
     {
-        return L(sprintf('MODEL_%s_FIELD_%s', (get_class($form_model))::model_type(), $field_name));
+        return $this->l(sprintf('MODEL_%s_FIELD_%s', (get_class($form_model))::model_type(), $field_name));
     }
 
   // options['decimals'] = int
@@ -136,11 +142,11 @@ class Lezer extends \i18n
         }
 
         if ($amount_of_days === -1) {
-            return L('DATETIME_RANGE_YESTERDAY');
+            return $this->l('DATETIME_RANGE_YESTERDAY');
         } elseif ($amount_of_days === 0) {
-            return L('DATETIME_RANGE_TODAY');
+            return $this->l('DATETIME_RANGE_TODAY');
         } elseif ($amount_of_days === 1) {
-            return L('DATETIME_RANGE_TOMORROW');
+            return $this->l('DATETIME_RANGE_TOMORROW');
         }
 
 
@@ -192,7 +198,7 @@ class Lezer extends \i18n
     public static function human_date($date_string, $short = true)
     {
         if ($date_string === '0000-00-00' || empty($date_string)) {
-            return L('MODEL_common_VALUE_EMPTY');
+            return $this->l('MODEL_common_VALUE_EMPTY');
         }
 
         if (preg_match('/^[0-9]{4}$/', $date_string) === 1) {
@@ -212,12 +218,12 @@ class Lezer extends \i18n
 
     public static function human_month($date_string)
     {
-        return L('DATETIME_CALENDAR_MONTH_' . Dato::format($date_string, 'm'));
+        return $this->l('DATETIME_CALENDAR_MONTH_' . Dato::format($date_string, 'm'));
     }
 
     public static function human_day($date_string)
     {
-        return L('DATETIME_CALENDAR_DAY_' . Dato::format($date_string, 'N'));
+        return $this->l('DATETIME_CALENDAR_DAY_' . Dato::format($date_string, 'N'));
     }
 
     public static function human_seconds($seconds)
