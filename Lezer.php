@@ -133,9 +133,11 @@ class Lezer extends \i18n
 
         if ($amount_of_days === -1) {
             return $this->l('DATETIME_RANGE_YESTERDAY');
-        } elseif ($amount_of_days === 0) {
+        }
+        if ($amount_of_days === 0) {
             return $this->l('DATETIME_RANGE_TODAY');
-        } elseif ($amount_of_days === 1) {
+        }
+        if ($amount_of_days === 1) {
             return $this->l('DATETIME_RANGE_TOMORROW');
         }
 
