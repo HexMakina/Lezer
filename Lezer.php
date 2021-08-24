@@ -2,7 +2,8 @@
 
 /*
  * i18n class called Lezer, shorthand L
- * honnors Ludwik *Lejzer* Zamenhof (Polish: Ludwik Łazarz Zamenhof; 15 December [O.S. 3 December] 1859 – 14 April [O.S. 1 April] 1917),
+ * honnors Ludwik *Lejzer* Zamenhof (Polish: Ludwik Łazarz Zamenhof;
+ * 15 December [O.S. 3 December] 1859 – 14 April [O.S. 1 April] 1917),
  * a medical doctor, inventor, and writer; most widely known for creating Esperanto.
  *
  * also Lezer is dutch for Reader, and it sounds like LASER, which is kinda cool.
@@ -14,7 +15,6 @@ use HexMakina\Tempus\{Dato,DatoTempo,Tempo};
 
 class Lezer extends \i18n
 {
-
     private $detected_language_files = [];
     private $detected_language_env = [];
 
@@ -24,11 +24,9 @@ class Lezer extends \i18n
   // protected $fallbackLang = 'fra';  // uses ISO-639-3
     protected $currentLang = null;
 
-    public function one_language()
+    public function availableLanguage()
     {
-        $this->detect_language_files();
-        $this->detect_language_env();
-        $the_one_language = current(array_intersect($this->detect_language_files(), $this->detect_language_env()));
+        $the_one_language = current(array_intersect($this->detectLanguageFiles(), $this->detectLanguageEnv()));
 
         if ($the_one_language) {
             $this->setForcedLang($the_one_language);
@@ -37,7 +35,7 @@ class Lezer extends \i18n
         return $the_one_language;
     }
 
-    public function detect_language_files()
+    private function detectLanguageFiles()
     {
         $files = FileSystem::preg_scandir(dirname($this->filePath), '/.json$/');
         if (empty($files)) {
@@ -65,7 +63,7 @@ class Lezer extends \i18n
    *
    * @return array with the user languages sorted by priority.
    */
-    public function detect_language_env()
+    private function detectLanguageEnv()
     {
         $userLangs = array();
 
@@ -117,7 +115,7 @@ class Lezer extends \i18n
         . "\n}";
     }
 
-    public function l($message, $context=[]) : string
+    public function l($message, $context = []): string
     {
         return call_user_func($this->prefix, $message, $context);
     }
@@ -125,7 +123,7 @@ class Lezer extends \i18n
 
   // options['decimals'] = int
   // options['abbrev'] = mixed: key needs to be set
-    public static function when($event, $options = [])
+    public function when($event, $options = [])
     {
         try {
             $amount_of_days = DatoTempo::days_diff(new \DateTime($event), new \DateTime());
@@ -171,15 +169,16 @@ class Lezer extends \i18n
                 $label .= '_PLURAL';
             }
 
-            $ordering[$unit] = $qty . ' ' . L($label) . '.';
+            $ordering[$unit] = $qty . ' ' . $this->l($label) . '.';
         }
-        $ret = (isset($amount_of_days) && $amount_of_days >= 0) ? L('DATETIME_RANGE_PREFIX_FUTURE') : L('DATETIME_RANGE_PREFIX_PAST');
-        $ret .= ' ' . implode(' & ', array_slice($ordering, 0, 2));
+        $ret = (isset($amount_of_days) && $amount_of_days >= 0)
+          ? 'DATETIME_RANGE_PREFIX_FUTURE' : 'DATETIME_RANGE_PREFIX_PAST';
+        $ret .= $this->l($ret) . ' ' . implode(' & ', array_slice($ordering, 0, 2));
 
         return $ret;
     }
 
-    public static function time($time_string, $short = true)
+    public function time($time_string, $short = true)
     {
         if ($short === true) {
             $time_string = substr($time_string, 0, 5);
@@ -187,7 +186,7 @@ class Lezer extends \i18n
         return $time_string;
     }
 
-    public static function human_date($date_string, $short = true)
+    public function date($date_string, $short = true)
     {
         if ($date_string === '0000-00-00' || empty($date_string)) {
             return $this->l('MODEL_common_VALUE_EMPTY');
@@ -199,7 +198,7 @@ class Lezer extends \i18n
 
         list($year, $month, $day) = explode('-', $date_string);
 
-        $ret = intval($day) . ' ' . L("DATETIME_CALENDAR_MONTH_$month");
+        $ret = intval($day) . ' ' . $this->l("DATETIME_CALENDAR_MONTH_$month");
 
         if ($short === true && Dato::format(null, 'Y') === $year) {
             return $ret;
@@ -208,17 +207,17 @@ class Lezer extends \i18n
         }
     }
 
-    public static function human_month($date_string)
+    public function month($date_string)
     {
         return $this->l('DATETIME_CALENDAR_MONTH_' . Dato::format($date_string, 'm'));
     }
 
-    public static function human_day($date_string)
+    public function day($date_string)
     {
         return $this->l('DATETIME_CALENDAR_DAY_' . Dato::format($date_string, 'N'));
     }
 
-    public static function human_seconds($seconds)
+    public function seconds($seconds)
     {
         $hours = floor($seconds / 3600);
         $mins = floor(($seconds - $hours * 3600) / 60);
