@@ -171,9 +171,9 @@ class Lezer extends \i18n
 
             $ordering[$unit] = $qty . ' ' . $this->l($label) . '.';
         }
-        $ret = (isset($amount_of_days) && $amount_of_days >= 0)
-          ? 'DATETIME_RANGE_PREFIX_FUTURE' : 'DATETIME_RANGE_PREFIX_PAST';
-        $ret .= $this->l($ret) . ' ' . implode(' & ', array_slice($ordering, 0, 2));
+        $ret = 'DATETIME_RANGE_PREFIX_';
+        $ret.= (isset($amount_of_days) && $amount_of_days >= 0) ? 'FUTURE' : 'PAST';
+        $ret = $this->l($ret) . ' ' . implode(' & ', array_slice($ordering, 0, 2));
 
         return $ret;
     }
