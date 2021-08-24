@@ -122,14 +122,6 @@ class Lezer extends \i18n
         return call_user_func($this->prefix, $message, $context);
     }
 
-    public static function model_type_to_label($form_model)
-    {
-        return $this->l(sprintf('MODEL_%s_INSTANCE', get_class($form_model)::model_type()));
-    }
-    public static function field_name_to_label($form_model, $field_name)
-    {
-        return $this->l(sprintf('MODEL_%s_FIELD_%s', (get_class($form_model))::model_type(), $field_name));
-    }
 
   // options['decimals'] = int
   // options['abbrev'] = mixed: key needs to be set
