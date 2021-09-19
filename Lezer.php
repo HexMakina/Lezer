@@ -217,7 +217,7 @@ class Lezer extends \i18n
 
     public function init() {
         if ($this->isInitialized()) {
-            throw new BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
+            throw new \BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
         }
 
         $this->isInitialized = true;
@@ -234,7 +234,7 @@ class Lezer extends \i18n
             }
         }
         if ($this->appliedLang == NULL) {
-            throw new RuntimeException('No language file was found.');
+            throw new \RuntimeException('No language file was found.');
         }
 
         // search for cache file
@@ -261,7 +261,7 @@ class Lezer extends \i18n
 				mkdir($this->cachePath, 0755, true);
 
             if (file_put_contents($this->cacheFilePath, $compiled) === FALSE) {
-                throw new Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
+                throw new \Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
             }
             chmod($this->cacheFilePath, 0755);
 
@@ -285,7 +285,7 @@ class Lezer extends \i18n
     {
         foreach($context as $i => $context_message)
           $context[$i] = $this->l($context_message);
-          
+
         return call_user_func($this->prefix, $message, $context);
     }
 }
