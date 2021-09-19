@@ -104,21 +104,7 @@ class Lezer extends \i18n
     }
 
 
-    public function compileFunction()
-    {
-        return ''
-        . "function " . $this->prefix . '($string, $args=NULL) {' . "\n"
-        . '    if (!defined("' . $this->prefix . '::".$string))'
-        . '       return $string;'
-        . '    $return = constant("' . $this->prefix . '::".$string);' . "\n"
-        . '    return $args ? vsprintf($return,$args) : $return;'
-        . "\n}";
-    }
 
-    public function l($message, $context = []): string
-    {
-        return call_user_func($this->prefix, $message, $context);
-    }
 
 
   // options['decimals'] = int
@@ -227,5 +213,79 @@ class Lezer extends \i18n
 
         $hours_format = '%dh %dm %ds';
         return sprintf($hours_format, $hours, $mins, $secs);
+    }
+
+    public function init() {
+        if ($this->isInitialized()) {
+            throw new BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
+        }
+
+        $this->isInitialized = true;
+
+        $this->userLangs = $this->getUserLangs();
+
+        // search for language file
+        $this->appliedLang = NULL;
+        foreach ($this->userLangs as $priority => $langcode) {
+            $this->langFilePath = $this->getConfigFilename($langcode);
+            if (file_exists($this->langFilePath)) {
+                $this->appliedLang = $langcode;
+                break;
+            }
+        }
+        if ($this->appliedLang == NULL) {
+            throw new RuntimeException('No language file was found.');
+        }
+
+        // search for cache file
+        $this->cacheFilePath = $this->cachePath . '/php_i18n_' . md5_file(__FILE__) . '_' . $this->prefix . '_' . $this->appliedLang . '.cache.php';
+
+        // whether we need to create a new cache file
+        $outdated = !file_exists($this->cacheFilePath) ||
+            filemtime($this->cacheFilePath) < filemtime($this->langFilePath) || // the language config was updated
+            ($this->mergeFallback && filemtime($this->cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
+
+        if ($outdated) {
+            $config = $this->load($this->langFilePath);
+            if ($this->mergeFallback)
+                $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
+
+            $compiled = "<?php class " . $this->prefix . " {\n"
+            	. $this->compile($config)
+            	. 'public static function __callStatic($string, $args) {' . "\n"
+            	. '    return vsprintf(constant("self::" . $string), $args);'
+            	. "\n}\n}\n"
+              . $this->compileFunction();
+
+			if( ! is_dir($this->cachePath))
+				mkdir($this->cachePath, 0755, true);
+
+            if (file_put_contents($this->cacheFilePath, $compiled) === FALSE) {
+                throw new Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
+            }
+            chmod($this->cacheFilePath, 0755);
+
+        }
+
+        require_once $this->cacheFilePath;
+    }
+
+    public function compileFunction()
+    {
+        return ''
+        . "function " . $this->prefix . '($string, $args=NULL) {' . "\n"
+        . '    if (!defined("' . $this->prefix . '::".$string))'
+        . '       return $string;'
+        . '    $return = constant("' . $this->prefix . '::".$string);' . "\n"
+        . '    return $args ? vsprintf($return,$args) : $return;'
+        . "\n}";
+    }
+
+    public function l($message, $context = []): string
+    {
+        foreach($context as $i => $context_message)
+          $context[$i] = $this->l($context_message);
+          
+        return call_user_func($this->prefix, $message, $context);
     }
 }
