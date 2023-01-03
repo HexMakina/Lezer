@@ -263,7 +263,13 @@ class Lezer extends \i18n
             if (file_put_contents($this->cacheFilePath, $compiled) === FALSE) {
                 throw new \Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
             }
-            chmod($this->cacheFilePath, 0755);
+            try{
+                chmod($this->cacheFilePath, 0755);
+              }
+              catch(\Throwable $t){
+                throw new \Exception("Could chmod cache file '" . $this->cacheFilePath . "'");
+              }
+
 
         }
 
