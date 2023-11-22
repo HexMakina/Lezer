@@ -1,8 +1,7 @@
 <?php
 
-/*
- * i18n class called Lezer, shorthand L
- * honnors Ludwik *Lejzer* Zamenhof (Polish: Ludwik Łazarz Zamenhof;
+/**
+ * honnors Ludwik *Lejzer* Zamenhof (Polish: Ludwik Łazarz Zamenhof);
  * 15 December [O.S. 3 December] 1859 – 14 April [O.S. 1 April] 1917),
  * a medical doctor, inventor, and writer; most widely known for creating Esperanto.
  *
@@ -10,282 +9,101 @@
  */
 namespace HexMakina\Lezer;
 
-use \HexMakina\LocalFS\FileSystem;
-use \HexMakina\Tempus\{Dato,DatoTempo,Tempo};
-
-class Lezer extends \i18n
+class Lezer
 {
-    private $detected_language_files = [];
-    private $detected_language_env = [];
-
-  // protected $basePath = 'locale';
-  // protected $filePath = 'locale/{LANGUAGE}/user_interface.ini'; // uses gettext hierarchy
-  // protected $cachePath = 'locale/cache/';
-  // protected $fallbackLang = 'fra';  // uses ISO-639-3
-    protected $currentLang = null;
-
-    public function availableLanguage()
-    {
-        $the_one_language = current(array_intersect($this->detectLanguageFiles(), $this->detectLanguageEnv()));
-
-        if ($the_one_language) {
-            $this->setForcedLang($the_one_language);
+    private $translations = [];
+  
+    public function __construct(string $pathToTranslations) {
+        if (file_exists($pathToTranslations)) {
+            $json = file_get_contents($pathToTranslations);
+            $this->translations = json_decode($json, true) ?: [];
         }
-
-        return $the_one_language;
-    }
-
-    private function detectLanguageFiles()
-    {
-        $files = FileSystem::preg_scandir(dirname($this->filePath), '/.json$/');
-        if (empty($files)) {
-            return [];
-        }
-
-        $files = implode('', $files);
-        $res = preg_match_all('/([a-z]{3})\.json/', $files, $m);
-        if ($res) { // false or 0 is none found
-            $this->detected_language_files = $m[1];
-        }
-        return $this->detected_language_files;
-    }
-
-  /**
-   * getUserLangs()
-   * Returns the user languages
-   * Normally it returns an array like this:
-   * 1. Forced language
-   * 2. Language in $_GET['lang']
-   * 3. Language in $_SESSION['lang']
-   * 4. COOKIE
-   * 5. Fallback language
-   * Note: duplicate values are deleted.
-   *
-   * @return array with the user languages sorted by priority.
-   */
-    private function detectLanguageEnv()
-    {
-        $userLangs = array();
-
-        // 1. forced language
-        if ($this->forcedLang != null) {
-            $userLangs['forced'] = $this->forcedLang;
-        }
-
-        // 2. GET parameter 'lang'
-        if (isset($_GET['lang']) && is_string($_GET['lang'])) {
-            $userLangs['get'] = $_GET['lang'];
-        }
-
-        // 3. SESSION parameter 'lang'
-        if (isset($_SESSION['lang']) && is_string($_SESSION['lang'])) {
-            $userLangs['session'] = $_SESSION['lang'];
-        }
-
-        // 4. COOKIES
-        if (isset($_COOKIE['lang']) && is_string($_COOKIE['lang'])) {
-            $userLangs['cookie'] = $_COOKIE['lang'];
-        }
-
-        // Lowest priority: fallback
-        $userLangs['fallback'] = $this->fallbackLang;
-        // remove duplicate elements
-        $userLangs = array_unique($userLangs);
-
-        // remove illegal userLangs
-        foreach ($userLangs as $key => $value) {
-            // only allow a-z, A-Z and 0-9 and _ and -
-            if (preg_match('/^[a-zA-Z0-9_-]*$/', $value) === 1) {
-                $this->detected_language_env[$key] = $value;
-            }
-        }
-
-        return $this->detected_language_env;
     }
 
 
-
-
-
-  // options['decimals'] = int
-  // options['abbrev'] = mixed: key needs to be set
-    public function when($event, $options = [])
+    public function l(string $key, array $context = []): string
     {
-        try {
-            $amount_of_days = DatoTempo::days_diff(new \DateTime($event), new \DateTime());
-        } catch (\Exception $e) {
-            return __FUNCTION__ . ': error';
-        }
+        // no translation available, returns the key
+        $translation = $this->translations[$key] ?? null;
 
-        if ($amount_of_days === -1) {
-            return $this->l('DATETIME_RANGE_YESTERDAY');
+        if (empty($translation)) {
+            return $key;
         }
-        if ($amount_of_days === 0) {
-            return $this->l('DATETIME_RANGE_TODAY');
+    
+        // translate context
+        if (empty($context)) {
+            return $translation;
         }
-        if ($amount_of_days === 1) {
-            return $this->l('DATETIME_RANGE_TOMORROW');
-        }
+    
+        return vsprintf($translation, array_map([$this, 'l'], $context));
+    }
 
+    /**
+     * Provides a method to detect languages that is requested from the client.
+     * First it looks for the language values in $_GET, $_SESSION and $_COOKIE. 
+     * For each found language, it assigns a quality value
+     *      1000 for $_GET, 
+     *      100 for $_SESSION and 
+     *      10 for $_COOKIE
+     * 
+     * If no languages are found, it calls parseHTTPHeader()
+     * 
+     * Then it removes duplicates and sorts the array of detected languages by Quality, 
+     * highest first
+     *
+     * @return array with the user languages sorted by priority.
+     */
 
-        $datetime_parts = [
-        'y' => 'DATETIME_UNIT_YEAR',
-        'm' => 'DATETIME_UNIT_MONTH',
-        'w' => 'DATETIME_UNIT_WEEK',
-        'd' => 'DATETIME_UNIT_DAY',
-        'h' => 'DATETIME_UNIT_HOUR',
-        'i' => 'DATETIME_UNIT_MINUTE',
-        's' => 'DATETIME_UNIT_SECOND'
-        ];
-
-        $date_diff = DatoTempo::days_diff_in_parts(abs($amount_of_days));
-        $ordering = [];
-        foreach ($datetime_parts as $unit => $label) {
-            if (!isset($date_diff[$unit])) {
-                continue;
+    public static function detectLanguages($key='lang') : array
+    {
+        $ret = [];
+        foreach(['$_GET' => 1000, '$_SESSION' => 100, '$_COOKIE' => 10] as $source => $quality){
+            $lang = $$source[$key] ?? null;
+            if(!empty($lang) && preg_match('/^[a-zA-Z0-9_-]*$/', $lang) === 1){
+                $ret[$quality] = $lang;
             }
-
-            $qty = (int)$date_diff[$unit];
-
-            if ($qty === 0) {
-                continue;
-            }
-
-            if (isset($options['abbrev'])) {
-                $label .= '_ABBREV';
-            } elseif ($qty > 1) {
-                $label .= '_PLURAL';
-            }
-
-            $ordering[$unit] = $qty . ' ' . $this->l($label) . '.';
         }
-        $ret = 'DATETIME_RANGE_PREFIX_';
-        $ret.= (isset($amount_of_days) && $amount_of_days >= 0) ? 'FUTURE' : 'PAST';
-        $ret = $this->l($ret) . ' ' . implode(' & ', array_slice($ordering, 0, 2));
+
+        if(empty($ret))
+            $ret = self::parseHTTPHeader();
+
+        $ret = array_unique($ret);
+        // Sort the detected languages by quality, with the highest quality first
+        arsort($ret);
 
         return $ret;
     }
 
-    public function time($time_string, $short = true)
+    /**
+     * Parse the user's HTTP header to retrieve the languages they have set.
+     */
+    private static function parseHTTPHeader() : array
     {
-        if ($short === true) {
-            $time_string = substr($time_string, 0, 5);
-        }
-        return $time_string;
-    }
+        $languages = [];
 
-    public function date($date_string, $short = true)
-    {
-        if ($date_string === '0000-00-00' || empty($date_string)) {
-            return $this->l('MODEL_common_VALUE_EMPTY');
-        }
+        // Parse the header value into an array of languages and qualities
+        $language_list = explode(',', $header);
+        foreach ($language_list as $language_entry) {
+            $quality = 1; // default
 
-        if (preg_match('/^[0-9]{4}$/', $date_string) === 1) {
-            return intval($date_string);
-        }
+            $parts = explode(';', trim($language_entry));
+            $lang = trim($parts[0]);
 
-        list($year, $month, $day) = explode('-', $date_string);
+            if (count($parts) > 1) {
+                $q_parts = explode('=', $parts[1]);
 
-        $ret = intval($day) . ' ' . $this->l("DATETIME_CALENDAR_MONTH_$month");
-
-        if ($short === true && Dato::format(null, 'Y') === $year) {
-            return $ret;
-        } else {
-            return "$ret $year";
-        }
-    }
-
-    public function month($date_string)
-    {
-        return $this->l('DATETIME_CALENDAR_MONTH_' . Dato::format($date_string, 'm'));
-    }
-
-    public function day($date_string)
-    {
-        return $this->l('DATETIME_CALENDAR_DAY_' . Dato::format($date_string, 'N'));
-    }
-
-    public function seconds($seconds)
-    {
-        $hours = floor($seconds / 3600);
-        $mins = floor(($seconds - $hours * 3600) / 60);
-        $secs = floor($seconds % 60);
-
-        $hours_format = '%dh %dm %ds';
-        return sprintf($hours_format, $hours, $mins, $secs);
-    }
-
-    public function init() {
-        if ($this->isInitialized()) {
-            throw new \BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
-        }
-
-        $this->isInitialized = true;
-
-        $this->userLangs = $this->getUserLangs();
-
-        // search for language file
-        $this->appliedLang = NULL;
-        foreach ($this->userLangs as $priority => $langcode) {
-            $this->langFilePath = $this->getConfigFilename($langcode);
-            if (file_exists($this->langFilePath)) {
-                $this->appliedLang = $langcode;
-                break;
+                // Check for a 'q' part in the language entry
+                if (strtolower(trim($q_parts[0])) === 'q') {
+                    $quality = (float)trim($q_parts[1]);
+                }
+            }
+            // Keep only the language code, not any other attributes
+            $language_code = substr($lang, 0, 2);
+            if (!in_array($language_code, $languages)) {
+                $languages[$quality] = $language_code;
             }
         }
-        if ($this->appliedLang == NULL) {
-            throw new \RuntimeException('No language file was found.');
-        }
 
-        // search for cache file
-        $this->cacheFilePath = $this->cachePath . '/php_i18n_' . md5_file(__FILE__) . '_' . $this->prefix . '_' . $this->appliedLang . '.cache.php';
-
-        // whether we need to create a new cache file
-        $outdated = !file_exists($this->cacheFilePath) ||
-            filemtime($this->cacheFilePath) < filemtime($this->langFilePath) || // the language config was updated
-            ($this->mergeFallback && filemtime($this->cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
-
-        if ($outdated) {
-            $config = $this->load($this->langFilePath);
-            if ($this->mergeFallback)
-                $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
-
-            $compiled = "<?php class " . $this->prefix . " {\n"
-            	. $this->compile($config)
-            	. 'public static function __callStatic($string, $args) {' . "\n"
-            	. '    return vsprintf(constant("self::" . $string), $args);'
-            	. "\n}\n}\n"
-              . $this->compileFunction();
-
-			if( ! is_dir($this->cachePath))
-				mkdir($this->cachePath, 0755, true);
-
-            if (file_put_contents($this->cacheFilePath, $compiled) === FALSE) {
-                throw new \Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
-            }
-            chmod($this->cacheFilePath, 0755);
-
-        }
-
-        require_once $this->cacheFilePath;
-    }
-
-    public function compileFunction()
-    {
-        return ''
-        . "function " . $this->prefix . '($string, $args=NULL) {' . "\n"
-        . '    if (!defined("' . $this->prefix . '::".$string))'
-        . '       return $string;'
-        . '    $return = constant("' . $this->prefix . '::".$string);' . "\n"
-        . '    return $args ? vsprintf($return,$args) : $return;'
-        . "\n}";
-    }
-
-    public function l($message, $context = []): string
-    {
-        foreach($context as $i => $context_message)
-          $context[$i] = $this->l($context_message);
-
-        return call_user_func($this->prefix, $message, $context);
+        return $languages;
     }
 }
