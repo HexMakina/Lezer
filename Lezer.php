@@ -74,36 +74,132 @@ class Lezer
         return $ret;
     }
 
-    /**
-     * Parse the user's HTTP header to retrieve the languages they have set.
-     */
-    private static function parseHTTPHeader() : array
+    public function time($time_string, $short = true)
     {
-        $languages = [];
+        if ($short === true) {
+            $time_string = substr($time_string, 0, 5);
+        }
+        return $time_string;
+    }
 
-        // Parse the header value into an array of languages and qualities
-        $language_list = explode(',', $header);
-        foreach ($language_list as $language_entry) {
-            $quality = 1; // default
-
-            $parts = explode(';', trim($language_entry));
-            $lang = trim($parts[0]);
-
-            if (count($parts) > 1) {
-                $q_parts = explode('=', $parts[1]);
-
-                // Check for a 'q' part in the language entry
-                if (strtolower(trim($q_parts[0])) === 'q') {
-                    $quality = (float)trim($q_parts[1]);
-                }
-            }
-            // Keep only the language code, not any other attributes
-            $language_code = substr($lang, 0, 2);
-            if (!in_array($language_code, $languages)) {
-                $languages[$quality] = $language_code;
-            }
+    public function date($date_string, $short = true)
+    {
+        if ($date_string === '0000-00-00' || empty($date_string)) {
+            return $this->l('MODEL_common_VALUE_EMPTY');
         }
 
-        return $languages;
+        if (preg_match('/^[0-9]{4}$/', $date_string) === 1) {
+            return intval($date_string);
+        }
+
+        list($year, $month, $day) = explode('-', $date_string);
+
+        $ret = intval($day) . ' ' . $this->l("DATETIME_CALENDAR_MONTH_$month");
+
+        if ($short === true && Dato::format(null, 'Y') === $year) {
+            return $ret;
+        } else {
+            return "$ret $year";
+        }
+    }
+
+    public function month($date_string)
+    {
+        return $this->l('DATETIME_CALENDAR_MONTH_' . Dato::format($date_string, 'm'));
+    }
+
+    public function day($date_string)
+    {
+        return $this->l('DATETIME_CALENDAR_DAY_' . Dato::format($date_string, 'N'));
+    }
+
+    public function seconds($seconds)
+    {
+        $hours = floor($seconds / 3600);
+        $mins = floor(($seconds - $hours * 3600) / 60);
+        $secs = floor($seconds % 60);
+
+        $hours_format = '%dh %dm %ds';
+        return sprintf($hours_format, $hours, $mins, $secs);
+    }
+
+    public function init() {
+        if ($this->isInitialized()) {
+            throw new \BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
+        }
+
+        $this->isInitialized = true;
+
+        $this->userLangs = $this->getUserLangs();
+
+        // search for language file
+        $this->appliedLang = NULL;
+        foreach ($this->userLangs as $priority => $langcode) {
+            $this->langFilePath = $this->getConfigFilename($langcode);
+            if (file_exists($this->langFilePath)) {
+                $this->appliedLang = $langcode;
+                break;
+            }
+        }
+        if ($this->appliedLang == NULL) {
+            throw new \RuntimeException('No language file was found.');
+        }
+
+        // search for cache file
+        $this->cacheFilePath = $this->cachePath . '/php_i18n_' . md5_file(__FILE__) . '_' . $this->prefix . '_' . $this->appliedLang . '.cache.php';
+
+        // whether we need to create a new cache file
+        $outdated = !file_exists($this->cacheFilePath) ||
+            filemtime($this->cacheFilePath) < filemtime($this->langFilePath) || // the language config was updated
+            ($this->mergeFallback && filemtime($this->cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
+
+        if ($outdated) {
+            $config = $this->load($this->langFilePath);
+            if ($this->mergeFallback)
+                $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
+
+            $compiled = "<?php class " . $this->prefix . " {\n"
+            	. $this->compile($config)
+            	. 'public static function __callStatic($string, $args) {' . "\n"
+            	. '    return vsprintf(constant("self::" . $string), $args);'
+            	. "\n}\n}\n"
+              . $this->compileFunction();
+
+			if( ! is_dir($this->cachePath))
+				mkdir($this->cachePath, 0755, true);
+
+            if (file_put_contents($this->cacheFilePath, $compiled) === FALSE) {
+                throw new \Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
+            }
+            try{
+                chmod($this->cacheFilePath, 0755);
+              }
+              catch(\Throwable $t){
+                throw new \Exception("Could chmod cache file '" . $this->cacheFilePath . "'");
+              }
+
+
+        }
+
+        require_once $this->cacheFilePath;
+    }
+
+    public function compileFunction()
+    {
+        return ''
+        . "function " . $this->prefix . '($string, $args=NULL) {' . "\n"
+        . '    if (!defined("' . $this->prefix . '::".$string))'
+        . '       return $string;'
+        . '    $return = constant("' . $this->prefix . '::".$string);' . "\n"
+        . '    return $args ? vsprintf($return,$args) : $return;'
+        . "\n}";
+    }
+
+    public function l($message, $context = []): string
+    {
+        foreach($context as $i => $context_message)
+          $context[$i] = $this->l($context_message);
+
+        return call_user_func($this->prefix, $message, $context);
     }
 }
